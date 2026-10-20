@@ -222,11 +222,18 @@ export type TransactionSubmissionResult =
 export class BaseContractClient {
   protected contractId: string;
   private contractInstance: Contract;
+  private readonly rpcServer?: rpc.Server;
 
-  constructor(contractId: string) {
+  constructor(contractId: string, rpcServer?: rpc.Server) {
     if (!contractId) throw new Error("Contract ID is required");
     this.contractId = contractId;
     this.contractInstance = new Contract(contractId);
+    this.rpcServer = rpcServer;
+  }
+
+  /** Returns the per-client transport, falling back to the configured RPC URL. */
+  protected getRpcServer(): rpc.Server {
+    return this.rpcServer ?? getSorobanServer();
   }
 
   protected get contract(): Contract {
@@ -240,7 +247,7 @@ export class BaseContractClient {
     parse: (val: xdr.ScVal) => T,
   ): Promise<T> {
     const config = getConfig();
-    const server = getSorobanServer();
+    const server = this.getRpcServer();
     const account = await withRetry(() => server.getAccount(publicKey));
     const tx = new TransactionBuilder(account, {
       fee: BASE_FEE,
@@ -295,7 +302,7 @@ export class BaseContractClient {
     publicKey: string,
   ): Promise<Extract<TransactionSubmissionResult, { status: "SUCCESS" }>> {
     const config = getConfig();
-    const server = getSorobanServer();
+    const server = this.getRpcServer();
     const account = await withRetry(() => server.getAccount(publicKey));
     const tx = new TransactionBuilder(account, {
       fee: BASE_FEE,
@@ -360,7 +367,7 @@ export class BaseContractClient {
     publicKey: string,
   ): Promise<SimulationResult> {
     const config = getConfig();
-    const server = getSorobanServer();
+    const server = this.getRpcServer();
     const account = await withRetry(() => server.getAccount(publicKey));
     const tx = new TransactionBuilder(account, {
       fee: BASE_FEE,
