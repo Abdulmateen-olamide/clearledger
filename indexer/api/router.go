@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
+	indexermiddleware "clearledger/indexer/middleware"
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/golang-jwt/jwt/v5"
-	indexermiddleware "clearledger/indexer/middleware"
 )
 
 func AuthMiddleware(jwtSecret string) func(http.Handler) http.Handler {
@@ -84,6 +84,7 @@ func CORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 			if origin != "" {
 				if _, ok := originSet[origin]; ok {
 					w.Header().Set("Access-Control-Allow-Origin", origin)
+					w.Header().Set("Access-Control-Expose-Headers", "X-Next-Cursor")
 					w.Header().Set("Vary", "Origin")
 				} else {
 					w.WriteHeader(http.StatusForbidden)

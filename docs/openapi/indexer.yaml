@@ -130,9 +130,20 @@ paths:
       security: []
       parameters:
         - $ref: "#/components/parameters/Limit"
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque cursor returned in the X-Next-Cursor response header.
+          schema:
+            type: string
       responses:
         "200":
           description: Indexed events
+          headers:
+            X-Next-Cursor:
+              description: Cursor for the next page, omitted when no more events exist.
+              schema:
+                type: string
           content:
             application/json:
               schema:
