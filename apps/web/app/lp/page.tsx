@@ -13,7 +13,6 @@ import { useWalletStore } from "@/store/wallet";
 import { useConfirmDialogStore } from "@/store/confirmDialog";
 import { PoolClient, type SimulationResult } from "@clearledger/sdk";
 import { Address, nativeToScVal } from "@stellar/stellar-sdk";
-import { formatAmount } from "@/lib/assets";
 
 const poolContractID = process.env.NEXT_PUBLIC_POOL_CONTRACT_ID || "";
 const STROOPS_PER_UNIT = 10_000_000;
@@ -40,7 +39,15 @@ function formatSharePrice(
 }
 
 function formatShareValue(value: bigint | undefined): string {
-  return formatAmount(value ?? 0n);
+  const amount = value ?? 0n;
+  const negative = amount < 0n;
+  const absolute = negative ? -amount : amount;
+  const whole = (absolute / BigInt(STROOPS_PER_UNIT)).toString();
+  const groupedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const fraction = (absolute % BigInt(STROOPS_PER_UNIT))
+    .toString()
+    .padStart(7, "0");
+  return `${negative ? "-" : ""}${groupedWhole}.${fraction} USDC`;
 }
 
 export default function LPDashboard() {
