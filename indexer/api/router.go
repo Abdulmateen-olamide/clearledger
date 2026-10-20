@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
+	indexermiddleware "clearledger/indexer/middleware"
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/golang-jwt/jwt/v5"
-	indexermiddleware "clearledger/indexer/middleware"
 )
 
 func AuthMiddleware(jwtSecret string) func(http.Handler) http.Handler {
@@ -389,6 +389,27 @@ func NewRouter(h *APIHandler) (*chi.Mux, func()) {
 	}
 
 	// Health check
+	r.Get("/live", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+	r.Get("/ready", func(w http.ResponseWriter, r *http.Request) {
+		const dependencyTimeout = 2 * time.Second
+		postgresReady := runDependencyCheck(r.Context(), dependencyTimeout, h.dbHealthChecker)
+		sorobanReady := runDependencyCheck(r.Context(), dependencyTimeout, h.sorobanHealthChecker)
+		listenerReady := h.ListenerHealth() != nil && h.ListenerHealth().IsHealthy()
+		dependencies := map[string]string{
+			"postgres":    dependencyStatus(postgresReady),
+			"soroban_rpc": dependencyStatus(sorobanReady),
+			"listener":    dependencyStatus(listenerReady),
+		}
+		status := "ready"
+		code := http.StatusOK
+		if !postgresReady || !sorobanReady || !listenerReady {
+			status = "degraded"
+			code = http.StatusServiceUnavailable
+		}
+		writeJSON(w, code, map[string]interface{}{"status": status, "dependencies": dependencies})
+	})
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -445,6 +466,22 @@ func NewRouter(h *APIHandler) (*chi.Mux, func()) {
 		rl.Stop()
 		invoiceLimiter.Stop()
 	}
+}
+
+func runDependencyCheck(parent context.Context, timeout time.Duration, check func(context.Context) error) bool {
+	if check == nil {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(parent, timeout)
+	defer cancel()
+	return check(ctx) == nil
+}
+
+func dependencyStatus(ready bool) string {
+	if ready {
+		return "ready"
+	}
+	return "unavailable"
 }
 
 func metricsTokenMiddleware(expected string) func(http.Handler) http.Handler {
