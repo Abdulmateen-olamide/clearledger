@@ -614,7 +614,9 @@ export default function Marketplace() {
                 selectedIds={selectedInvoiceIds}
                 onSelectionChange={handleSelectionChange}
                 emptyStateTitle={t("invoices.emptyState.title")}
-                emptyStateDescription={t("invoices.emptyState.description")}
+                emptyStateDescription={
+                  `No invoices match status ${statusFilter === "ALL" ? "any" : statusFilter}, amount ${minAmount || "any"}–${maxAmount || "any"} USDC, and maximum discount ${maxDiscount || "any"} bps. Clear the filters to see eligible invoices.`
+                }
                 emptyStateAction={{
                   label: t("invoices.emptyState.action"),
                   onClick: () => {
