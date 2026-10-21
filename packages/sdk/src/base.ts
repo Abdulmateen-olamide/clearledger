@@ -77,6 +77,50 @@ export class TransactionInProgressError extends Error {
   }
 }
 
+/** Thrown when Freighter is not on the network configured for the SDK. */
+export class WalletNetworkMismatchError extends Error {
+  readonly expectedNetwork: string;
+  readonly actualNetwork: string | null;
+
+  constructor(expectedNetwork: string, actualNetwork: string | null) {
+    super(
+      actualNetwork
+        ? `Wallet network mismatch: expected ${expectedNetwork}, got ${actualNetwork}`
+        : `Unable to verify wallet network; reconnect Freighter to ${expectedNetwork}`,
+    );
+    this.name = "WalletNetworkMismatchError";
+    this.expectedNetwork = expectedNetwork;
+    this.actualNetwork = actualNetwork;
+  }
+}
+
+async function assertWalletNetwork(networkPassphrase: string): Promise<void> {
+  const expectedNetwork =
+    networkPassphrase === Networks.PUBLIC
+      ? "public"
+      : networkPassphrase === Networks.TESTNET
+        ? "testnet"
+        : null;
+  if (!expectedNetwork) {
+    throw new WalletNetworkMismatchError("the configured Stellar network", null);
+  }
+
+  const getNetworkDetails = (
+    freighterApi as unknown as {
+      getNetworkDetails?: () => Promise<{ network?: string }>;
+    }
+  ).getNetworkDetails;
+  if (!getNetworkDetails) {
+    throw new WalletNetworkMismatchError(expectedNetwork, null);
+  }
+
+  const details = await getNetworkDetails();
+  const actualNetwork = details.network?.trim().toLowerCase() || null;
+  if (actualNetwork !== expectedNetwork) {
+    throw new WalletNetworkMismatchError(expectedNetwork, actualNetwork);
+  }
+}
+
 export class TransactionTimeoutError extends Error {
   readonly txHash: string;
 
@@ -356,6 +400,9 @@ export class BaseContractClient {
       }
     }
     const prepared = await withRetry(() => server.prepareTransaction(tx));
+    // Re-check at the signing boundary: Freighter can change networks after
+    // initial connection or while simulation is running.
+    await assertWalletNetwork(config.networkPassphrase);
     const signed = await signTransactionCompat(prepared.toXDR(), {
       network:
         config.networkPassphrase === Networks.PUBLIC ? "PUBLIC" : "TESTNET",
