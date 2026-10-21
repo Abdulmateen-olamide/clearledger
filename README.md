@@ -64,3 +64,5 @@ The web application and contracts are currently deployed on Stellar Testnet for 
 Before planning any Mainnet deployment, read the [production readiness gates](docs/PRODUCTION_READINESS.md). They record the audit, deployment, RPC, API, monitoring, wallet, recovery, and compliance work that is still required; the current Testnet setup does not satisfy them.
 
 Use testnet wallets and assets only. Never put private keys or recovery phrases in environment files or source control.
+
+For tested keyboard flows, known limitations and the reporting route, read the [accessibility statement](docs/ACCESSIBILITY.md).

@@ -54,3 +54,4 @@
 ## Contributing
 
 - [How to Contribute](contributing/how-to-contribute.md)
+- [Accessibility Statement](ACCESSIBILITY.md)
